@@ -5,6 +5,21 @@ import * as fabric from "fabric";
 
 const EMOJIS = ["😀", "😂", "😍", "🔥", "💯", "⭐", "❤️", "🎉", "👍", "🙌", "😎", "🤩", "💜", "✨", "🌈", "🍕"];
 
+const COLORS = [
+  "#000000", // black
+  "#ffffff", // white
+  "#ef4444", // red
+  "#f97316", // orange
+  "#eab308", // yellow
+  "#22c55e", // green
+  "#06b6d4", // cyan
+  "#3b82f6", // blue
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#78716c", // grey
+  "#a16207", // brown
+];
+
 const CANVAS_W = 600;
 const CANVAS_H = 600;
 
@@ -13,28 +28,24 @@ export default function Canvas() {
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Undo/Redo history
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef<number>(-1);
   const isRestoringRef = useRef<boolean>(false);
 
-  // UI state for button enable/disable
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
-  // Save current canvas state into history
   const saveHistory = () => {
     const canvas = fabricRef.current;
     if (!canvas || isRestoringRef.current) return;
 
     const json = JSON.stringify(canvas.toJSON());
 
-    // If we've undone and then make a new action, drop the "future" states
     historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
     historyRef.current.push(json);
     historyIndexRef.current = historyRef.current.length - 1;
 
-    // Limit history size
     if (historyRef.current.length > 50) {
       historyRef.current.shift();
       historyIndexRef.current--;
@@ -47,10 +58,8 @@ export default function Canvas() {
   const restoreFromHistory = async (index: number) => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-
     const json = historyRef.current[index];
     if (!json) return;
-
     isRestoringRef.current = true;
     await canvas.loadFromJSON(json);
     canvas.renderAll();
@@ -86,22 +95,30 @@ export default function Canvas() {
 
     fabricRef.current = canvas;
 
-    // Save initial state
     historyRef.current = [JSON.stringify(canvas.toJSON())];
     historyIndexRef.current = 0;
 
-    // Save history whenever objects are added, removed, or modified
     canvas.on("object:added", saveHistory);
     canvas.on("object:removed", saveHistory);
     canvas.on("object:modified", saveHistory);
 
-    // Keyboard shortcuts
+    const handleSelection = () => {
+      const active = canvas.getActiveObject();
+      if (active) {
+        setSelectedType(active.type || null);
+      } else {
+        setSelectedType(null);
+      }
+    };
+    canvas.on("selection:created", handleSelection);
+    canvas.on("selection:updated", handleSelection);
+    canvas.on("selection:cleared", () => setSelectedType(null));
+
     const handleKeyDown = async (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isTyping =
         target.tagName === "TEXTAREA" || target.tagName === "INPUT";
 
-      // Ctrl/Cmd + Z = Undo, Ctrl/Cmd + Shift + Z or Ctrl+Y = Redo
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         if (isTyping) return;
         e.preventDefault();
@@ -119,7 +136,6 @@ export default function Canvas() {
         return;
       }
 
-      // Delete/Backspace removes selected object
       if (e.key === "Delete" || e.key === "Backspace") {
         const active = canvas.getActiveObject();
         if (active && !isTyping) {
@@ -222,6 +238,137 @@ export default function Canvas() {
     canvas.renderAll();
   };
 
+  const addRect = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const rect = new fabric.Rect({
+      left: CANVAS_W / 2 - 75,
+      top: CANVAS_H / 2 - 50,
+      width: 150,
+      height: 100,
+      fill: "#8b5cf6",
+    });
+
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.renderAll();
+  };
+
+  const addCircle = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const circle = new fabric.Circle({
+      left: CANVAS_W / 2 - 60,
+      top: CANVAS_H / 2 - 60,
+      radius: 60,
+      fill: "#ec4899",
+    });
+
+    canvas.add(circle);
+    canvas.setActiveObject(circle);
+    canvas.renderAll();
+  };
+
+  const addTriangle = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const triangle = new fabric.Triangle({
+      left: CANVAS_W / 2 - 60,
+      top: CANVAS_H / 2 - 50,
+      width: 120,
+      height: 100,
+      fill: "#22c55e",
+    });
+
+    canvas.add(triangle);
+    canvas.setActiveObject(triangle);
+    canvas.renderAll();
+  };
+
+  const addStar = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const star = new fabric.Polygon(
+      [
+        { x: 50, y: 0 },
+        { x: 61, y: 35 },
+        { x: 98, y: 35 },
+        { x: 68, y: 57 },
+        { x: 79, y: 91 },
+        { x: 50, y: 70 },
+        { x: 21, y: 91 },
+        { x: 32, y: 57 },
+        { x: 2, y: 35 },
+        { x: 39, y: 35 },
+      ],
+      {
+        left: CANVAS_W / 2 - 50,
+        top: CANVAS_H / 2 - 50,
+        fill: "#eab308",
+      }
+    );
+
+    canvas.add(star);
+    canvas.setActiveObject(star);
+    canvas.renderAll();
+  };
+
+  const addLine = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const line = new fabric.Line(
+      [CANVAS_W / 2 - 100, CANVAS_H / 2, CANVAS_W / 2 + 100, CANVAS_H / 2],
+      {
+        stroke: "#000000",
+        strokeWidth: 4,
+      }
+    );
+
+    canvas.add(line);
+    canvas.setActiveObject(line);
+    canvas.renderAll();
+  };
+
+  const changeColor = (color: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const active = canvas.getActiveObject();
+    if (!active) return;
+
+    const objects =
+      active.type === "activeSelection"
+        ? (active as fabric.ActiveSelection).getObjects()
+        : [active];
+
+    objects.forEach((obj) => {
+      if (
+        obj instanceof fabric.Textbox ||
+        obj instanceof fabric.Text
+      ) {
+        obj.set("fill", color);
+      } else if (obj instanceof fabric.Rect) {
+        obj.set("fill", color);
+      } else if (obj instanceof fabric.Circle) {
+        obj.set("fill", color);
+      } else if (obj instanceof fabric.Triangle) {
+        obj.set("fill", color);
+      } else if (obj instanceof fabric.Polygon) {
+        obj.set("fill", color);
+      } else if (obj instanceof fabric.Line) {
+        obj.set("stroke", color);
+      }
+    });
+
+    canvas.renderAll();
+    saveHistory();
+  };
+
   const clearCanvas = () => {
     const canvas = fabricRef.current;
     if (!canvas) return;
@@ -232,8 +379,6 @@ export default function Canvas() {
     canvas.clear();
     canvas.backgroundColor = "#ffffff";
     canvas.renderAll();
-
-    // Force-save this state to history (since clear() doesn't fire object:removed events cleanly)
     saveHistory();
   };
 
@@ -256,9 +401,23 @@ export default function Canvas() {
     link.click();
   };
 
+  const isTextSelected =
+    selectedType === "textbox" ||
+    selectedType === "text" ||
+    selectedType === "i-text";
+
+  const isShapeSelected =
+    selectedType === "rect" ||
+    selectedType === "circle" ||
+    selectedType === "triangle" ||
+    selectedType === "polygon" ||
+    selectedType === "line";
+
+  const showColorPicker = isTextSelected || isShapeSelected;
+
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Toolbar */}
+      {/* Row 1: Main actions */}
       <div className="flex gap-2 flex-wrap justify-center bg-gray-800 p-2 rounded-lg">
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -315,6 +474,68 @@ export default function Canvas() {
         />
       </div>
 
+      {/* Row 2: Shapes */}
+      <div className="flex gap-2 flex-wrap justify-center bg-gray-800 p-2 rounded-lg">
+        <p className="text-[11px] uppercase tracking-wider text-gray-500 self-center px-2">
+          Shapes
+        </p>
+        <button
+          onClick={addRect}
+          className="text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md transition"
+          title="Add rectangle"
+        >
+          ▭ Rect
+        </button>
+        <button
+          onClick={addCircle}
+          className="text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md transition"
+          title="Add circle"
+        >
+          ◯ Circle
+        </button>
+        <button
+          onClick={addTriangle}
+          className="text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md transition"
+          title="Add triangle"
+        >
+          △ Triangle
+        </button>
+        <button
+          onClick={addStar}
+          className="text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md transition"
+          title="Add star"
+        >
+          ★ Star
+        </button>
+        <button
+          onClick={addLine}
+          className="text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-md transition"
+          title="Add line"
+        >
+          ╱ Line
+        </button>
+      </div>
+
+      {/* Color picker — shows when text or shape is selected */}
+      {showColorPicker && (
+        <div className="flex flex-col items-center gap-2 bg-gray-800 p-3 rounded-lg">
+          <p className="text-[11px] uppercase tracking-wider text-gray-500">
+            {isTextSelected ? "Text Color" : "Shape Color"}
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center max-w-md">
+            {COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => changeColor(color)}
+                className="w-8 h-8 rounded-full border-2 border-gray-600 hover:border-white transition-transform hover:scale-110"
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Sticker palette */}
       <div className="bg-gray-800 rounded-lg p-3 max-w-2xl">
         <p className="text-[11px] uppercase tracking-wider text-gray-500 mb-2 text-center">
@@ -338,6 +559,11 @@ export default function Canvas() {
       <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
         <canvas ref={canvasElRef} width={CANVAS_W} height={CANVAS_H} />
       </div>
+
+      {/* Hint */}
+      <p className="text-xs text-gray-500">
+        Tip: Click any object to select it, then use the color palette above.
+      </p>
     </div>
   );
 }
