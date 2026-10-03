@@ -37,7 +37,6 @@ function applyAnimations(
   animations: AnimationType[],
   progress: number
 ) {
-  // Always reset to base first
   target.set({
     left: base.left,
     top: base.top,
@@ -49,7 +48,6 @@ function applyAnimations(
 
   const t = progress * Math.PI * 2;
 
-  // Track combined transformations
   let offsetTop = 0;
   let offsetAngle = 0;
   let scaleMultiplier = 1;
@@ -73,13 +71,12 @@ function applyAnimations(
       }
       case "fade": {
         const opacity = 0.3 + Math.abs(Math.sin(t)) * 0.7;
-        opacityMultiplier *= opacity / 1; // multiply
+        opacityMultiplier *= opacity;
         break;
       }
     }
   });
 
-  // Apply combined transforms
   target.set({
     top: base.top + offsetTop,
     angle: base.angle + offsetAngle,
@@ -150,7 +147,12 @@ export async function exportAnimatedGif({
       applyAnimations(target, base, animations, progress);
       canvas.renderAll();
 
-      const dataUrl = canvas.toDataURL({ format: "png", quality: 1 });
+      // ✅ multiplier is REQUIRED by Fabric's TDataUrlOptions type
+      const dataUrl = canvas.toDataURL({
+        format: "png",
+        quality: 1,
+        multiplier: 1,
+      });
 
       const img = new Image();
       img.onload = () => {
